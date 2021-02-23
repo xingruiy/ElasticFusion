@@ -1,4 +1,9 @@
-# ElasticFusion #
+## ==============
+ A modified version of ElasticFusion to work with my custom input functions. For original description see bellow:
+## ==============
+
+ElasticFusion 
+====
 
 Real-time dense visual SLAM system capable of capturing comprehensive dense globally consistent surfel-based maps of room scale environments explored using an RGB-D camera.
 

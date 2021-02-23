@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.6.0)
+cmake_minimum_required(VERSION 3.0)
 
 project(ElasticFusion)
 
@@ -18,6 +18,7 @@ if(WIN32)
   find_package(JPEG REQUIRED)
 endif()
 
+find_package(OpenCV REQUIRED)
 find_package(LAPACK REQUIRED)
 find_package(BLAS REQUIRED)
 find_package(ZLIB REQUIRED)
@@ -26,6 +27,9 @@ find_package(CUDA REQUIRED)
 find_package(OpenNI2 REQUIRED)
 find_package(efusion REQUIRED)
 find_package(SuiteSparse REQUIRED)
+find_package(xyutils REQUIRED)
+find_package(OpenCV REQUIRED)
+find_package(Boost COMPONENTS program_options)
 
 if(WIN32)
   find_package(RealSense QUIET)
@@ -73,28 +77,31 @@ set(CMAKE_CXX_FLAGS ${ADDITIONAL_CMAKE_CXX_FLAGS} "-O3 -msse2 -msse3 -Wall -std=
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -std=c++11")
 
 add_executable(ElasticFusion 
-               ${srcs}
-               ${tools_srcs}
-               ${hdrs}
-               ${tools_hdrs}
+${srcs}
+${tools_srcs}
+${hdrs}
+${tools_hdrs}
 )
 
 target_link_libraries(ElasticFusion
-					  ${EXTRA_WINDOWS_LIBS}
-                      ${ZLIB_LIBRARY}
-                      ${Pangolin_LIBRARIES}
-                      ${CUDA_LIBRARIES}
-                      ${EXTRA_LIBS}
-                      ${EFUSION_LIBRARY}
-                      ${OPENNI2_LIBRARY}
-                      ${SUITESPARSE_LIBRARIES}
-                      ${BLAS_LIBRARIES}
-                      ${LAPACK_LIBRARIES}
+${EXTRA_WINDOWS_LIBS}
+${ZLIB_LIBRARY}
+${Pangolin_LIBRARIES}
+${CUDA_LIBRARIES}
+${EXTRA_LIBS}
+${EFUSION_LIBRARY}
+${OPENNI2_LIBRARY}
+${SUITESPARSE_LIBRARIES}
+${BLAS_LIBRARIES}
+${LAPACK_LIBRARIES}
+${OpenCV_LIBS}
+xyutils
+Boost::program_options
 )
 
 
 INSTALL(TARGETS ElasticFusion
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
+RUNTIME DESTINATION bin
+LIBRARY DESTINATION lib
+ARCHIVE DESTINATION lib
 )

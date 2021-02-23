@@ -15,7 +15,7 @@
  * please email researchcontracts.engineering@imperial.ac.uk.
  *
  */
- 
+
 #include "ElasticFusion.h"
 
 ElasticFusion::ElasticFusion(const int timeDelta,
@@ -34,52 +34,52 @@ ElasticFusion::ElasticFusion(const int timeDelta,
                              const bool so3,
                              const bool frameToFrameRGB,
                              const std::string fileName)
- : frameToModel(Resolution::getInstance().width(),
-                Resolution::getInstance().height(),
-                Intrinsics::getInstance().cx(),
-                Intrinsics::getInstance().cy(),
-                Intrinsics::getInstance().fx(),
-                Intrinsics::getInstance().fy()),
-   modelToModel(Resolution::getInstance().width(),
-                Resolution::getInstance().height(),
-                Intrinsics::getInstance().cx(),
-                Intrinsics::getInstance().cy(),
-                Intrinsics::getInstance().fx(),
-                Intrinsics::getInstance().fy()),
-   ferns(500, depthCut * 1000, photoThresh),
-   saveFilename(fileName),
-   currPose(Eigen::Matrix4f::Identity()),
-   tick(1),
-   timeDelta(timeDelta),
-   icpCountThresh(countThresh),
-   icpErrThresh(errThresh),
-   covThresh(covThresh),
-   deforms(0),
-   fernDeforms(0),
-   consSample(20),
-   resize(Resolution::getInstance().width(),
-          Resolution::getInstance().height(),
-          Resolution::getInstance().width() / consSample,
-          Resolution::getInstance().height() / consSample),
-   imageBuff(Resolution::getInstance().rows() / consSample, Resolution::getInstance().cols() / consSample),
-   consBuff(Resolution::getInstance().rows() / consSample, Resolution::getInstance().cols() / consSample),
-   timesBuff(Resolution::getInstance().rows() / consSample, Resolution::getInstance().cols() / consSample),
-   closeLoops(closeLoops),
-   iclnuim(iclnuim),
-   reloc(reloc),
-   lost(false),
-   lastFrameRecovery(false),
-   trackingCount(0),
-   maxDepthProcessed(20.0f),
-   rgbOnly(false),
-   icpWeight(icpThresh),
-   pyramid(true),
-   fastOdom(fastOdom),
-   confidenceThreshold(confidence),
-   fernThresh(fernThresh),
-   so3(so3),
-   frameToFrameRGB(frameToFrameRGB),
-   depthCutoff(depthCut)
+    : frameToModel(Resolution::getInstance().width(),
+                   Resolution::getInstance().height(),
+                   Intrinsics::getInstance().cx(),
+                   Intrinsics::getInstance().cy(),
+                   Intrinsics::getInstance().fx(),
+                   Intrinsics::getInstance().fy()),
+      modelToModel(Resolution::getInstance().width(),
+                   Resolution::getInstance().height(),
+                   Intrinsics::getInstance().cx(),
+                   Intrinsics::getInstance().cy(),
+                   Intrinsics::getInstance().fx(),
+                   Intrinsics::getInstance().fy()),
+      ferns(500, depthCut * 5000, photoThresh),
+      saveFilename(fileName),
+      currPose(Eigen::Matrix4f::Identity()),
+      tick(1),
+      timeDelta(timeDelta),
+      icpCountThresh(countThresh),
+      icpErrThresh(errThresh),
+      covThresh(covThresh),
+      deforms(0),
+      fernDeforms(0),
+      consSample(20),
+      resize(Resolution::getInstance().width(),
+             Resolution::getInstance().height(),
+             Resolution::getInstance().width() / consSample,
+             Resolution::getInstance().height() / consSample),
+      imageBuff(Resolution::getInstance().rows() / consSample, Resolution::getInstance().cols() / consSample),
+      consBuff(Resolution::getInstance().rows() / consSample, Resolution::getInstance().cols() / consSample),
+      timesBuff(Resolution::getInstance().rows() / consSample, Resolution::getInstance().cols() / consSample),
+      closeLoops(closeLoops),
+      iclnuim(iclnuim),
+      reloc(reloc),
+      lost(false),
+      lastFrameRecovery(false),
+      trackingCount(0),
+      maxDepthProcessed(20.0f),
+      rgbOnly(false),
+      icpWeight(icpThresh),
+      pyramid(true),
+      fastOdom(fastOdom),
+      confidenceThreshold(confidence),
+      fernThresh(fernThresh),
+      so3(so3),
+      frameToFrameRGB(frameToFrameRGB),
+      depthCutoff(depthCut)
 {
     createTextures();
     createCompute();
@@ -97,7 +97,7 @@ ElasticFusion::ElasticFusion(const int timeDelta,
 
 ElasticFusion::~ElasticFusion()
 {
-    if(iclnuim)
+    if (iclnuim)
     {
         savePly();
     }
@@ -109,11 +109,11 @@ ElasticFusion::~ElasticFusion()
     std::ofstream f;
     f.open(fname.c_str(), std::fstream::out);
 
-    for(size_t i = 0; i < poseGraph.size(); i++)
+    for (size_t i = 0; i < poseGraph.size(); i++)
     {
         std::stringstream strs;
 
-        if(iclnuim)
+        if (iclnuim)
         {
             strs << std::setprecision(6) << std::fixed << (double)poseLogTimes.at(i) << " ";
         }
@@ -134,21 +134,21 @@ ElasticFusion::~ElasticFusion()
 
     f.close();
 
-    for(std::map<std::string, GPUTexture*>::iterator it = textures.begin(); it != textures.end(); ++it)
+    for (std::map<std::string, GPUTexture *>::iterator it = textures.begin(); it != textures.end(); ++it)
     {
         delete it->second;
     }
 
     textures.clear();
 
-    for(std::map<std::string, ComputePack*>::iterator it = computePacks.begin(); it != computePacks.end(); ++it)
+    for (std::map<std::string, ComputePack *>::iterator it = computePacks.begin(); it != computePacks.end(); ++it)
     {
         delete it->second;
     }
 
     computePacks.clear();
 
-    for(std::map<std::string, FeedbackBuffer*>::iterator it = feedbackBuffers.begin(); it != feedbackBuffers.end(); ++it)
+    for (std::map<std::string, FeedbackBuffer *>::iterator it = feedbackBuffers.begin(); it != feedbackBuffers.end(); ++it)
     {
         delete it->second;
     }
@@ -236,13 +236,13 @@ void ElasticFusion::computeFeedbackBuffers()
     TOCK("feedbackBuffers");
 }
 
-bool ElasticFusion::denseEnough(const Img<Eigen::Matrix<unsigned char, 3, 1>> & img)
+bool ElasticFusion::denseEnough(const Img<Eigen::Matrix<unsigned char, 3, 1>> &img)
 {
     int sum = 0;
 
-    for(int i = 0; i < img.rows; i++)
+    for (int i = 0; i < img.rows; i++)
     {
-        for(int j = 0; j < img.cols; j++)
+        for (int j = 0; j < img.cols; j++)
         {
             sum += img.at<Eigen::Matrix<unsigned char, 3, 1>>(i, j)(0) > 0 &&
                    img.at<Eigen::Matrix<unsigned char, 3, 1>>(i, j)(1) > 0 &&
@@ -253,15 +253,14 @@ bool ElasticFusion::denseEnough(const Img<Eigen::Matrix<unsigned char, 3, 1>> & 
     return float(sum) / float(img.rows * img.cols) > 0.75f;
 }
 
-void ElasticFusion::processFrame(const unsigned char * rgb,
-                                 const unsigned short * depth,
-                                 const int64_t & timestamp,
-                                 const Eigen::Matrix4f * inPose,
+void ElasticFusion::processFrame(const unsigned char *rgb,
+                                 const unsigned short *depth,
+                                 const int64_t &timestamp,
+                                 const Eigen::Matrix4f *inPose,
                                  const float weightMultiplier,
                                  const bool bootstrap)
 {
     TICK("Run");
-
     textures[GPUTexture::DEPTH_RAW]->texture->Upload(depth, GL_LUMINANCE_INTEGER_EXT, GL_UNSIGNED_SHORT);
     textures[GPUTexture::RGB]->texture->Upload(rgb, GL_RGB, GL_UNSIGNED_BYTE);
 
@@ -273,7 +272,7 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
     TOCK("Preprocess");
 
     //First run
-    if(tick == 1)
+    if (tick == 1)
     {
         computeFeedbackBuffers();
 
@@ -287,7 +286,7 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
 
         bool trackingOk = true;
 
-        if(bootstrap || !inPose)
+        if (bootstrap || !inPose)
         {
             TICK("autoFill");
             resize.image(indexMap.imageTex(), imageBuff);
@@ -305,7 +304,7 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
             frameToModel.initRGB(textures[GPUTexture::RGB]);
             TOCK("odomInit");
 
-            if(bootstrap)
+            if (bootstrap)
             {
                 assert(inPose);
                 currPose = currPose * (*inPose);
@@ -326,26 +325,26 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
 
             trackingOk = !reloc || frameToModel.lastICPError < 1e-04;
 
-            if(reloc)
+            if (reloc)
             {
-                if(!lost)
+                if (!lost)
                 {
                     Eigen::MatrixXd covariance = frameToModel.getCovariance();
 
-                    for(int i = 0; i < 6; i++)
+                    for (int i = 0; i < 6; i++)
                     {
-                        if(covariance(i, i) > 1e-04)
+                        if (covariance(i, i) > 1e-04)
                         {
                             trackingOk = false;
                             break;
                         }
                     }
 
-                    if(!trackingOk)
+                    if (!trackingOk)
                     {
                         trackingCount++;
 
-                        if(trackingCount > 10)
+                        if (trackingCount > 10)
                         {
                             lost = true;
                         }
@@ -355,20 +354,20 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
                         trackingCount = 0;
                     }
                 }
-                else if(lastFrameRecovery)
+                else if (lastFrameRecovery)
                 {
                     Eigen::MatrixXd covariance = frameToModel.getCovariance();
 
-                    for(int i = 0; i < 6; i++)
+                    for (int i = 0; i < 6; i++)
                     {
-                        if(covariance(i, i) > 1e-04)
+                        if (covariance(i, i) > 1e-04)
                         {
                             trackingOk = false;
                             break;
                         }
                     }
 
-                    if(trackingOk)
+                    if (trackingOk)
                     {
                         lost = false;
                         trackingCount = 0;
@@ -397,7 +396,7 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
         float largest = 0.01;
         float minWeight = 0.5;
 
-        if(weighting > largest)
+        if (weighting > largest)
         {
             weighting = largest;
         }
@@ -410,7 +409,7 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
 
         Eigen::Matrix4f recoveryPose = currPose;
 
-        if(closeLoops)
+        if (closeLoops)
         {
             lastFrameRecovery = false;
 
@@ -429,16 +428,16 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
 
         bool fernAccepted = false;
 
-        if(closeLoops && ferns.lastClosest != -1)
+        if (closeLoops && ferns.lastClosest != -1)
         {
-            if(lost)
+            if (lost)
             {
                 currPose = recoveryPose;
                 lastFrameRecovery = true;
             }
             else
             {
-                for(size_t i = 0; i < constraints.size(); i++)
+                for (size_t i = 0; i < constraints.size(); i++)
                 {
                     globalDeformation.addConstraint(constraints.at(i).sourcePoint,
                                                     constraints.at(i).targetPoint,
@@ -447,12 +446,12 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
                                                     true);
                 }
 
-                for(size_t i = 0; i < relativeCons.size(); i++)
+                for (size_t i = 0; i < relativeCons.size(); i++)
                 {
                     globalDeformation.addConstraint(relativeCons.at(i));
                 }
 
-                if(globalDeformation.constrain(ferns.frames, rawGraph, tick, true, poseGraph, true))
+                if (globalDeformation.constrain(ferns.frames, rawGraph, tick, true, poseGraph, true))
                 {
                     currPose = recoveryPose;
 
@@ -466,7 +465,7 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
         }
 
         //If we didn't match to a fern
-        if(!lost && closeLoops && rawGraph.size() == 0)
+        if (!lost && closeLoops && rawGraph.size() == 0)
         {
             //Only predict old view, since we just predicted the current view for the ferns (which failed!)
             TICK("IndexMap::INACTIVE");
@@ -501,9 +500,9 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
             Eigen::MatrixXd covar = modelToModel.getCovariance();
             bool covOk = true;
 
-            for(int i = 0; i < 6; i++)
+            for (int i = 0; i < 6; i++)
             {
-                if(covar(i, i) > covThresh)
+                if (covar(i, i) > covThresh)
                 {
                     covOk = false;
                     break;
@@ -515,18 +514,18 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
             estPose.topRightCorner(3, 1) = trans;
             estPose.topLeftCorner(3, 3) = rot;
 
-            if(covOk && modelToModel.lastICPCount > icpCountThresh && modelToModel.lastICPError < icpErrThresh)
+            if (covOk && modelToModel.lastICPCount > icpCountThresh && modelToModel.lastICPError < icpErrThresh)
             {
                 resize.vertex(indexMap.vertexTex(), consBuff);
                 resize.time(indexMap.oldTimeTex(), timesBuff);
 
-                for(int i = 0; i < consBuff.cols; i++)
+                for (int i = 0; i < consBuff.cols; i++)
                 {
-                    for(int j = 0; j < consBuff.rows; j++)
+                    for (int j = 0; j < consBuff.rows; j++)
                     {
-                        if(consBuff.at<Eigen::Vector4f>(j, i)(2) > 0 &&
-                           consBuff.at<Eigen::Vector4f>(j, i)(2) < maxDepthProcessed &&
-                           timesBuff.at<unsigned short>(j, i) > 0)
+                        if (consBuff.at<Eigen::Vector4f>(j, i)(2) > 0 &&
+                            consBuff.at<Eigen::Vector4f>(j, i)(2) < maxDepthProcessed &&
+                            timesBuff.at<unsigned short>(j, i) > 0)
                         {
                             Eigen::Vector4f worldRawPoint = currPose * Eigen::Vector4f(consBuff.at<Eigen::Vector4f>(j, i)(0),
                                                                                        consBuff.at<Eigen::Vector4f>(j, i)(1),
@@ -551,7 +550,7 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
 
                 std::vector<Deformation::Constraint> newRelativeCons;
 
-                if(localDeformation.constrain(ferns.frames, rawGraph, tick, false, poseGraph, false, &newRelativeCons))
+                if (localDeformation.constrain(ferns.frames, rawGraph, tick, false, poseGraph, false, &newRelativeCons))
                 {
                     poseMatches.push_back(PoseMatch(ferns.frames.size() - 1, ferns.frames.size(), estPose, currPose, constraints, false));
 
@@ -559,7 +558,7 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
 
                     currPose = estPose;
 
-                    for(size_t i = 0; i < newRelativeCons.size(); i += newRelativeCons.size() / 3)
+                    for (size_t i = 0; i < newRelativeCons.size(); i += newRelativeCons.size() / 3)
                     {
                         relativeCons.push_back(newRelativeCons.at(i));
                     }
@@ -567,7 +566,7 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
             }
         }
 
-        if(!rgbOnly && trackingOk && !lost)
+        if (!rgbOnly && trackingOk && !lost)
         {
             TICK("indexMap");
             indexMap.predictIndices(currPose, tick, globalModel.model(), maxDepthProcessed, timeDelta);
@@ -593,7 +592,7 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
             //If we're deforming we need to predict the depth again to figure out which
             //points to update the timestamp's of, since a deformation means a second pose update
             //this loop
-            if(rawGraph.size() > 0 && !fernAccepted)
+            if (rawGraph.size() > 0 && !fernAccepted)
             {
                 indexMap.synthesizeDepth(currPose,
                                          globalModel.model(),
@@ -632,7 +631,7 @@ void ElasticFusion::processFrame(const unsigned char * rgb,
 
     predict();
 
-    if(!lost)
+    if (!lost)
     {
         processFerns();
         tick++;
@@ -652,7 +651,7 @@ void ElasticFusion::predict()
 {
     TICK("IndexMap::ACTIVE");
 
-    if(lastFrameRecovery)
+    if (lastFrameRecovery)
     {
         indexMap.combinedPredict(currPose,
                                  globalModel.model(),
@@ -705,12 +704,12 @@ void ElasticFusion::filterDepth()
     computePacks[ComputePack::FILTER]->compute(textures[GPUTexture::DEPTH_RAW]->texture, &uniforms);
 }
 
-void ElasticFusion::normaliseDepth(const float & minVal, const float & maxVal)
+void ElasticFusion::normaliseDepth(const float &minVal, const float &maxVal)
 {
     std::vector<Uniform> uniforms;
 
-    uniforms.push_back(Uniform("maxVal", maxVal * 1000.f));
-    uniforms.push_back(Uniform("minVal", minVal * 1000.f));
+    uniforms.push_back(Uniform("maxVal", maxVal * 5000.f));
+    uniforms.push_back(Uniform("minVal", minVal * 5000.f));
 
     computePacks[ComputePack::NORM]->compute(textures[GPUTexture::DEPTH_RAW]->texture, &uniforms);
 }
@@ -722,17 +721,17 @@ void ElasticFusion::savePly()
 
     // Open file
     std::ofstream fs;
-    fs.open (filename.c_str ());
+    fs.open(filename.c_str());
 
-    Eigen::Vector4f * mapData = globalModel.downloadMap();
+    Eigen::Vector4f *mapData = globalModel.downloadMap();
 
     int validCount = 0;
 
-    for(unsigned int i = 0; i < globalModel.lastCount(); i++)
+    for (unsigned int i = 0; i < globalModel.lastCount(); i++)
     {
         Eigen::Vector4f pos = mapData[(i * 3) + 0];
 
-        if(pos[3] > confidenceThreshold)
+        if (pos[3] > confidenceThreshold)
         {
             validCount++;
         }
@@ -740,10 +739,12 @@ void ElasticFusion::savePly()
 
     // Write header
     fs << "ply";
-    fs << "\nformat " << "binary_little_endian" << " 1.0";
+    fs << "\nformat "
+       << "binary_little_endian"
+       << " 1.0";
 
     // Vertices
-    fs << "\nelement vertex "<< validCount;
+    fs << "\nelement vertex " << validCount;
     fs << "\nproperty float x"
           "\nproperty float y"
           "\nproperty float z";
@@ -761,16 +762,16 @@ void ElasticFusion::savePly()
     fs << "\nend_header\n";
 
     // Close the file
-    fs.close ();
+    fs.close();
 
     // Open file in binary appendable
-    std::ofstream fpout (filename.c_str (), std::ios::app | std::ios::binary);
+    std::ofstream fpout(filename.c_str(), std::ios::app | std::ios::binary);
 
-    for(unsigned int i = 0; i < globalModel.lastCount(); i++)
+    for (unsigned int i = 0; i < globalModel.lastCount(); i++)
     {
         Eigen::Vector4f pos = mapData[(i * 3) + 0];
 
-        if(pos[3] > confidenceThreshold)
+        if (pos[3] > confidenceThreshold)
         {
             Eigen::Vector4f col = mapData[(i * 3) + 1];
             Eigen::Vector4f nor = mapData[(i * 3) + 2];
@@ -780,44 +781,44 @@ void ElasticFusion::savePly()
             nor[2] *= -1;
 
             float value;
-            memcpy (&value, &pos[0], sizeof (float));
-            fpout.write (reinterpret_cast<const char*> (&value), sizeof (float));
+            memcpy(&value, &pos[0], sizeof(float));
+            fpout.write(reinterpret_cast<const char *>(&value), sizeof(float));
 
-            memcpy (&value, &pos[1], sizeof (float));
-            fpout.write (reinterpret_cast<const char*> (&value), sizeof (float));
+            memcpy(&value, &pos[1], sizeof(float));
+            fpout.write(reinterpret_cast<const char *>(&value), sizeof(float));
 
-            memcpy (&value, &pos[2], sizeof (float));
-            fpout.write (reinterpret_cast<const char*> (&value), sizeof (float));
+            memcpy(&value, &pos[2], sizeof(float));
+            fpout.write(reinterpret_cast<const char *>(&value), sizeof(float));
 
             unsigned char r = int(col[0]) >> 16 & 0xFF;
             unsigned char g = int(col[0]) >> 8 & 0xFF;
             unsigned char b = int(col[0]) & 0xFF;
 
-            fpout.write (reinterpret_cast<const char*> (&r), sizeof (unsigned char));
-            fpout.write (reinterpret_cast<const char*> (&g), sizeof (unsigned char));
-            fpout.write (reinterpret_cast<const char*> (&b), sizeof (unsigned char));
+            fpout.write(reinterpret_cast<const char *>(&r), sizeof(unsigned char));
+            fpout.write(reinterpret_cast<const char *>(&g), sizeof(unsigned char));
+            fpout.write(reinterpret_cast<const char *>(&b), sizeof(unsigned char));
 
-            memcpy (&value, &nor[0], sizeof (float));
-            fpout.write (reinterpret_cast<const char*> (&value), sizeof (float));
+            memcpy(&value, &nor[0], sizeof(float));
+            fpout.write(reinterpret_cast<const char *>(&value), sizeof(float));
 
-            memcpy (&value, &nor[1], sizeof (float));
-            fpout.write (reinterpret_cast<const char*> (&value), sizeof (float));
+            memcpy(&value, &nor[1], sizeof(float));
+            fpout.write(reinterpret_cast<const char *>(&value), sizeof(float));
 
-            memcpy (&value, &nor[2], sizeof (float));
-            fpout.write (reinterpret_cast<const char*> (&value), sizeof (float));
+            memcpy(&value, &nor[2], sizeof(float));
+            fpout.write(reinterpret_cast<const char *>(&value), sizeof(float));
 
-            memcpy (&value, &nor[3], sizeof (float));
-            fpout.write (reinterpret_cast<const char*> (&value), sizeof (float));
+            memcpy(&value, &nor[3], sizeof(float));
+            fpout.write(reinterpret_cast<const char *>(&value), sizeof(float));
         }
     }
 
     // Close file
-    fs.close ();
+    fs.close();
 
-    delete [] mapData;
+    delete[] mapData;
 }
 
-Eigen::Vector3f ElasticFusion::rodrigues2(const Eigen::Matrix3f& matrix)
+Eigen::Vector3f ElasticFusion::rodrigues2(const Eigen::Matrix3f &matrix)
 {
     Eigen::JacobiSVD<Eigen::Matrix3f> svd(matrix, Eigen::ComputeFullV | Eigen::ComputeFullU);
     Eigen::Matrix3f R = svd.matrixU() * svd.matrixV().transpose();
@@ -826,30 +827,31 @@ Eigen::Vector3f ElasticFusion::rodrigues2(const Eigen::Matrix3f& matrix)
     double ry = R(0, 2) - R(2, 0);
     double rz = R(1, 0) - R(0, 1);
 
-    double s = sqrt((rx*rx + ry*ry + rz*rz)*0.25);
+    double s = sqrt((rx * rx + ry * ry + rz * rz) * 0.25);
     double c = (R.trace() - 1) * 0.5;
-    c = c > 1. ? 1. : c < -1. ? -1. : c;
+    c = c > 1. ? 1. : c < -1. ? -1.
+                              : c;
 
     double theta = acos(c);
 
-    if( s < 1e-5 )
+    if (s < 1e-5)
     {
         double t;
 
-        if( c > 0 )
+        if (c > 0)
             rx = ry = rz = 0;
         else
         {
-            t = (R(0, 0) + 1)*0.5;
-            rx = sqrt( std::max(t, 0.0) );
-            t = (R(1, 1) + 1)*0.5;
-            ry = sqrt( std::max(t, 0.0) ) * (R(0, 1) < 0 ? -1.0 : 1.0);
-            t = (R(2, 2) + 1)*0.5;
-            rz = sqrt( std::max(t, 0.0) ) * (R(0, 2) < 0 ? -1.0 : 1.0);
+            t = (R(0, 0) + 1) * 0.5;
+            rx = sqrt(std::max(t, 0.0));
+            t = (R(1, 1) + 1) * 0.5;
+            ry = sqrt(std::max(t, 0.0)) * (R(0, 1) < 0 ? -1.0 : 1.0);
+            t = (R(2, 2) + 1) * 0.5;
+            rz = sqrt(std::max(t, 0.0)) * (R(0, 2) < 0 ? -1.0 : 1.0);
 
-            if( fabs(rx) < fabs(ry) && fabs(rx) < fabs(rz) && (R(1, 2) > 0) != (ry*rz > 0) )
+            if (fabs(rx) < fabs(ry) && fabs(rx) < fabs(rz) && (R(1, 2) > 0) != (ry * rz > 0))
                 rz = -rz;
-            theta /= sqrt(rx*rx + ry*ry + rz*rz);
+            theta /= sqrt(rx * rx + ry * ry + rz * rz);
             rx *= theta;
             ry *= theta;
             rz *= theta;
@@ -857,140 +859,142 @@ Eigen::Vector3f ElasticFusion::rodrigues2(const Eigen::Matrix3f& matrix)
     }
     else
     {
-        double vth = 1/(2*s);
+        double vth = 1 / (2 * s);
         vth *= theta;
-        rx *= vth; ry *= vth; rz *= vth;
+        rx *= vth;
+        ry *= vth;
+        rz *= vth;
     }
     return Eigen::Vector3d(rx, ry, rz).cast<float>();
 }
 
 //Sad times ahead
-IndexMap & ElasticFusion::getIndexMap()
+IndexMap &ElasticFusion::getIndexMap()
 {
     return indexMap;
 }
 
-GlobalModel & ElasticFusion::getGlobalModel()
+GlobalModel &ElasticFusion::getGlobalModel()
 {
     return globalModel;
 }
 
-Ferns & ElasticFusion::getFerns()
+Ferns &ElasticFusion::getFerns()
 {
     return ferns;
 }
 
-Deformation & ElasticFusion::getLocalDeformation()
+Deformation &ElasticFusion::getLocalDeformation()
 {
     return localDeformation;
 }
 
-std::map<std::string, GPUTexture*> & ElasticFusion::getTextures()
+std::map<std::string, GPUTexture *> &ElasticFusion::getTextures()
 {
     return textures;
 }
 
-const std::vector<PoseMatch> & ElasticFusion::getPoseMatches()
+const std::vector<PoseMatch> &ElasticFusion::getPoseMatches()
 {
     return poseMatches;
 }
 
-const RGBDOdometry & ElasticFusion::getModelToModel()
+const RGBDOdometry &ElasticFusion::getModelToModel()
 {
     return modelToModel;
 }
 
-const float & ElasticFusion::getConfidenceThreshold()
+const float &ElasticFusion::getConfidenceThreshold()
 {
     return confidenceThreshold;
 }
 
-void ElasticFusion::setRgbOnly(const bool & val)
+void ElasticFusion::setRgbOnly(const bool &val)
 {
     rgbOnly = val;
 }
 
-void ElasticFusion::setIcpWeight(const float & val)
+void ElasticFusion::setIcpWeight(const float &val)
 {
     icpWeight = val;
 }
 
-void ElasticFusion::setPyramid(const bool & val)
+void ElasticFusion::setPyramid(const bool &val)
 {
     pyramid = val;
 }
 
-void ElasticFusion::setFastOdom(const bool & val)
+void ElasticFusion::setFastOdom(const bool &val)
 {
     fastOdom = val;
 }
 
-void ElasticFusion::setSo3(const bool & val)
+void ElasticFusion::setSo3(const bool &val)
 {
     so3 = val;
 }
 
-void ElasticFusion::setFrameToFrameRGB(const bool & val)
+void ElasticFusion::setFrameToFrameRGB(const bool &val)
 {
     frameToFrameRGB = val;
 }
 
-void ElasticFusion::setConfidenceThreshold(const float & val)
+void ElasticFusion::setConfidenceThreshold(const float &val)
 {
     confidenceThreshold = val;
 }
 
-void ElasticFusion::setFernThresh(const float & val)
+void ElasticFusion::setFernThresh(const float &val)
 {
     fernThresh = val;
 }
 
-void ElasticFusion::setDepthCutoff(const float & val)
+void ElasticFusion::setDepthCutoff(const float &val)
 {
     depthCutoff = val;
 }
 
-const bool & ElasticFusion::getLost() //lel
+const bool &ElasticFusion::getLost() //lel
 {
     return lost;
 }
 
-const int & ElasticFusion::getTick()
+const int &ElasticFusion::getTick()
 {
     return tick;
 }
 
-const int & ElasticFusion::getTimeDelta()
+const int &ElasticFusion::getTimeDelta()
 {
     return timeDelta;
 }
 
-void ElasticFusion::setTick(const int & val)
+void ElasticFusion::setTick(const int &val)
 {
     tick = val;
 }
 
-const float & ElasticFusion::getMaxDepthProcessed()
+const float &ElasticFusion::getMaxDepthProcessed()
 {
     return maxDepthProcessed;
 }
 
-const Eigen::Matrix4f & ElasticFusion::getCurrPose()
+const Eigen::Matrix4f &ElasticFusion::getCurrPose()
 {
     return currPose;
 }
 
-const int & ElasticFusion::getDeforms()
+const int &ElasticFusion::getDeforms()
 {
     return deforms;
 }
 
-const int & ElasticFusion::getFernDeforms()
+const int &ElasticFusion::getFernDeforms()
 {
     return fernDeforms;
 }
 
-std::map<std::string, FeedbackBuffer*> & ElasticFusion::getFeedbackBuffers()
+std::map<std::string, FeedbackBuffer *> &ElasticFusion::getFeedbackBuffers()
 {
     return feedbackBuffers;
 }

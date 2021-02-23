@@ -1,6 +1,6 @@
-cmake_minimum_required(VERSION 2.6.0)
+cmake_minimum_required(VERSION 3.0)
 
-project(libefusion)
+project(libefusion LANGUAGES CXX CUDA)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -29,23 +29,23 @@ if(WIN32)
   file(GLOB containers_hdrs Cuda/containers/*.hpp)
 endif()
 
-set(CUDA_ARCH_BIN "30 35 50 52 61" CACHE STRING "Specify 'real' GPU arch to build binaries for, BIN(PTX) format is supported. Example: 1.3 2.1(1.3) or 13 21(13)")
-set(CUDA_ARCH_PTX "" CACHE STRING "Specify 'virtual' PTX arch to build PTX intermediate code for. Example: 1.0 1.2 or 10 12")              
+# set(CUDA_ARCH_BIN "30 35 50 52 61" CACHE STRING "Specify 'real' GPU arch to build binaries for, BIN(PTX) format is supported. Example: 1.3 2.1(1.3) or 13 21(13)")
+# set(CUDA_ARCH_PTX "" CACHE STRING "Specify 'virtual' PTX arch to build PTX intermediate code for. Example: 1.0 1.2 or 10 12")  
 
-SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR})
-include(CudaComputeTargetFlags.cmake)                  
-APPEND_TARGET_ARCH_FLAGS()
+# SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR})
+# include(CudaComputeTargetFlags.cmake)      
+# APPEND_TARGET_ARCH_FLAGS()
 
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}  "-Xcompiler;-fPIC;")           
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "--ftz=true;--prec-div=false;--prec-sqrt=false") 
+# set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}  "-Xcompiler;-fPIC;")           
+# set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "--ftz=true;--prec-div=false;--prec-sqrt=false") 
 
-CUDA_COMPILE(cuda_objs ${cuda})
+# CUDA_COMPILE(cuda_objs ${cuda})
 
 if(WIN32)
   set(ADDITIONAL_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 endif()
 
-set(CMAKE_CXX_FLAGS ${ADDITIONAL_CMAKE_CXX_FLAGS} "-O3 -msse2 -msse3 -Wall -std=c++11 -DSHADER_DIR=${efusion_SHADER_DIR}")
+set(CMAKE_CXX_FLAGS ${ADDITIONAL_CMAKE_CXX_FLAGS} "-O3 -fPIC -msse2 -msse3 -Wall -std=c++11 -DSHADER_DIR=${efusion_SHADER_DIR}")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -std=c++11 -DSHADER_DIR=${efusion_SHADER_DIR}")
   
 if(WIN32)
@@ -55,29 +55,37 @@ if(WIN32)
 endif()
 
 add_library(efusion SHARED 
-            ${srcs}
-            ${utils_srcs}
-            ${shader_srcs}
-            ${cuda} 
-            ${cuda_objs} 
-            ${containers}
-            ${hdrs}
-            ${utils_hdrs}
-            ${shader_hdrs}
-            ${cuda_hdrs} 
-            ${containers_hdrs}
+${srcs}
+${utils_srcs}
+${shader_srcs}
+${cuda} 
+${cuda_objs} 
+${containers}
+${hdrs}
+${utils_hdrs}
+${shader_hdrs}
+${cuda_hdrs} 
+${containers_hdrs}
+)
+
+set_target_properties(efusion
+PROPERTIES 
+  CUDA_SEPARABLE_COMPILATION ON
+  POSITION_INDEPENDENT_CODE ON
+  CUDA_STANDARD 11
+  CUDA_ARCHITECTURES 86
 )
 
 target_link_libraries(efusion
-                      ${Eigen_LIBRARIES}
-                      ${Pangolin_LIBRARIES}
-                      ${CUDA_LIBRARIES}
-                      ${SUITESPARSE_LIBRARIES}
-					  ${EXTRA_WINDOWS_LIBS}
+${Eigen_LIBRARIES}
+${Pangolin_LIBRARIES}
+${CUDA_LIBRARIES}
+${SUITESPARSE_LIBRARIES}
+${EXTRA_WINDOWS_LIBS}
 )
 
 INSTALL(TARGETS efusion
-            RUNTIME DESTINATION bin
-            LIBRARY DESTINATION lib
-            ARCHIVE DESTINATION lib
+RUNTIME DESTINATION bin
+LIBRARY DESTINATION lib
+ARCHIVE DESTINATION lib
 )

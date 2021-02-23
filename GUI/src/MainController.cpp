@@ -15,19 +15,43 @@
  * please email researchcontracts.engineering@imperial.ac.uk.
  *
  */
- 
-#include "MainController.h"
 
-MainController::MainController(int argc, char * argv[])
- : good(true),
-   eFusion(0),
-   gui(0),
-   groundTruthOdometry(0),
-   logReader(0),
-   framesToSkip(0),
-   resetButton(false),
-   resizeStream(0)
+#include "MainController.h"
+#include <boost/program_options.hpp>
+
+namespace po = boost::program_options;
+
+MainController::MainController(int argc, char *argv[])
+    : good(true),
+      eFusion(0),
+      gui(0),
+      groundTruthOdometry(0),
+      logReader(0),
+      framesToSkip(0),
+      resetButton(false),
+      resizeStream(0),
+      camera(0)
 {
+    std::string url;
+    po::options_description common("valid options");
+    common.add_options()("help", "get help message")(
+        "input", po::value<std::string>(&url)->required());
+
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, common), vm);
+
+    if (vm.count("help"))
+    {
+        std::cout << common << std::endl;
+        exit(0);
+    }
+
+    po::notify(vm);
+    camera = InputFactory::GetInputMethod(url);
+
+    if (!camera)
+        exit(0);
+
     std::string empty;
     iclnuim = Parse::get().arg(argc, argv, "-icl", empty) > -1;
 
@@ -36,9 +60,12 @@ MainController::MainController(int argc, char * argv[])
 
     Resolution::getInstance(640, 480);
 
-    if(calibrationFile.length())
+    // if (calibrationFile.length())
+    if (camera->HasIntrinsics())
     {
-        loadCalibration(calibrationFile);
+        // loadCalibration(calibrationFile);
+        Eigen::Matrix3f K = camera->GetIntrinsics();
+        Intrinsics::getInstance(K(0, 0), K(1, 1), K(0, 2), K(1, 2));
     }
     else
     {
@@ -47,35 +74,35 @@ MainController::MainController(int argc, char * argv[])
 
     Parse::get().arg(argc, argv, "-l", logFile);
 
-    if(logFile.length())
-    {
-        logReader = new RawLogReader(logFile, Parse::get().arg(argc, argv, "-f", empty) > -1);
-    }
-    else
-    {
-        bool flipColors = Parse::get().arg(argc,argv,"-f",empty) > -1;
-        logReader = new LiveLogReader(logFile, flipColors, LiveLogReader::CameraType::OpenNI2);
+    //     if (logFile.length())
+    //     {
+    //         logReader = new RawLogReader(logFile, Parse::get().arg(argc, argv, "-f", empty) > -1);
+    //     }
+    //     else
+    //     {
+    //         bool flipColors = Parse::get().arg(argc, argv, "-f", empty) > -1;
+    //         logReader = new LiveLogReader(logFile, flipColors, LiveLogReader::CameraType::OpenNI2);
 
-        good = ((LiveLogReader *)logReader)->cam->ok();
+    //         good = ((LiveLogReader *)logReader)->cam->ok();
 
-#ifdef WITH_REALSENSE
-        if(!good)
-        {
-          delete logReader;
-          logReader = new LiveLogReader(logFile, flipColors, LiveLogReader::CameraType::RealSense);
+    // #ifdef WITH_REALSENSE
+    //         if (!good)
+    //         {
+    //             delete logReader;
+    //             logReader = new LiveLogReader(logFile, flipColors, LiveLogReader::CameraType::RealSense);
 
-          good = ((LiveLogReader *)logReader)->cam->ok();
-        }
-#endif
-    }
+    //             good = ((LiveLogReader *)logReader)->cam->ok();
+    //         }
+    // #endif
+    //     }
 
-    if(Parse::get().arg(argc, argv, "-p", poseFile) > 0)
-    {
-        groundTruthOdometry = new GroundTruthOdometry(poseFile);
-    }
+    // if (Parse::get().arg(argc, argv, "-p", poseFile) > 0)
+    // {
+    //     groundTruthOdometry = new GroundTruthOdometry(poseFile);
+    // }
 
     confidence = 10.0f;
-    depth = 3.0f;
+    depth = 5.0f;
     icp = 10.0f;
     icpErrThresh = 5e-05;
     covThresh = 1e-05;
@@ -100,7 +127,7 @@ MainController::MainController(int argc, char * argv[])
     Parse::get().arg(argc, argv, "-s", start);
     Parse::get().arg(argc, argv, "-e", end);
 
-    logReader->flipColors = Parse::get().arg(argc, argv, "-f", empty) > -1;
+    // logReader->flipColors = Parse::get().arg(argc, argv, "-f", empty) > -1;
 
     openLoop = !groundTruthOdometry && Parse::get().arg(argc, argv, "-o", empty) > -1;
     reloc = Parse::get().arg(argc, argv, "-rl", empty) > -1;
@@ -112,7 +139,7 @@ MainController::MainController(int argc, char * argv[])
 
     gui = new GUI(logFile.length() == 0, Parse::get().arg(argc, argv, "-sc", empty) > -1);
 
-    gui->flipColors->Ref().Set(logReader->flipColors);
+    // gui->flipColors->Ref().Set(logReader->flipColors);
     gui->rgbOnly->Ref().Set(false);
     gui->pyramid->Ref().Set(true);
     gui->fastOdom->Ref().Set(fastOdom);
@@ -130,33 +157,33 @@ MainController::MainController(int argc, char * argv[])
 
 MainController::~MainController()
 {
-    if(eFusion)
+    if (eFusion)
     {
         delete eFusion;
     }
 
-    if(gui)
+    if (gui)
     {
         delete gui;
     }
 
-    if(groundTruthOdometry)
+    if (groundTruthOdometry)
     {
         delete groundTruthOdometry;
     }
 
-    if(logReader)
+    if (logReader)
     {
         delete logReader;
     }
 
-    if(resizeStream)
+    if (resizeStream)
     {
         delete resizeStream;
     }
 }
 
-void MainController::loadCalibration(const std::string & filename)
+void MainController::loadCalibration(const std::string &filename)
 {
     std::ifstream file(filename);
     std::string line;
@@ -176,23 +203,23 @@ void MainController::loadCalibration(const std::string & filename)
 
 void MainController::launch()
 {
-    while(good)
+    while (good)
     {
-        if(eFusion)
+        if (eFusion)
         {
             run();
         }
 
-        if(eFusion == 0 || resetButton)
+        if (eFusion == 0 || resetButton)
         {
             resetButton = false;
 
-            if(eFusion)
+            if (eFusion)
             {
                 delete eFusion;
             }
 
-            logReader->rewind();
+            // logReader->rewind();
             eFusion = new ElasticFusion(openLoop ? std::numeric_limits<int>::max() / 2 : timeDelta,
                                         icpCountThresh,
                                         icpErrThresh,
@@ -208,83 +235,93 @@ void MainController::launch()
                                         fernThresh,
                                         so3,
                                         frameToFrameRGB,
-                                        logReader->getFile());
+                                        "null.txt");
+            // logReader->getFile());
         }
         else
         {
             break;
         }
-
     }
 }
 
 void MainController::run()
 {
-    while(!pangolin::ShouldQuit() && !((!logReader->hasMore()) && quiet) && !(eFusion->getTick() == end && quiet))
+    // while (!pangolin::ShouldQuit() && !((!logReader->hasMore()) && quiet) && !(eFusion->getTick() == end && quiet))
+    while (!pangolin::ShouldQuit())
     {
-        if(!gui->pause->Get() || pangolin::Pushed(*gui->step))
+        if (!gui->pause->Get() || pangolin::Pushed(*gui->step))
         {
-            if((logReader->hasMore() || rewind) && eFusion->getTick() < end)
+
+            cv::Mat rgb, depth;
+            size_t id;
+            double time;
+            Sophus::SE3d pose;
+            if (camera->HasImages() && camera->GetNext(id, rgb, depth, time))
             {
-                TICK("LogRead");
-                if(rewind)
-                {
-                    if(!logReader->hasMore())
-                    {
-                        logReader->getBack();
-                    }
-                    else
-                    {
-                        logReader->getNext();
-                    }
-
-                    if(logReader->rewound())
-                    {
-                        logReader->currentFrame = 0;
-                    }
-                }
-                else
-                {
-                    logReader->getNext();
-                }
-                TOCK("LogRead");
-
-                if(eFusion->getTick() < start)
-                {
-                    eFusion->setTick(start);
-                    logReader->fastForward(start);
-                }
-
-                float weightMultiplier = framesToSkip + 1;
-
-                if(framesToSkip > 0)
-                {
-                    eFusion->setTick(eFusion->getTick() + framesToSkip);
-                    logReader->fastForward(logReader->currentFrame + framesToSkip);
-                    framesToSkip = 0;
-                }
-
-                Eigen::Matrix4f * currentPose = 0;
-
-                if(groundTruthOdometry)
-                {
-                    currentPose = new Eigen::Matrix4f;
-                    currentPose->setIdentity();
-                    *currentPose = groundTruthOdometry->getTransformation(logReader->timestamp);
-                }
-
-                eFusion->processFrame(logReader->rgb, logReader->depth, logReader->timestamp, currentPose, weightMultiplier);
-
-                if(currentPose)
-                {
-                    delete currentPose;
-                }
-
-                if(frameskip && Stopwatch::getInstance().getTimings().at("Run") > 1000.f / 30.f)
-                {
-                    framesToSkip = int(Stopwatch::getInstance().getTimings().at("Run") / (1000.f / 30.f));
-                }
+                eFusion->processFrame(rgb.data, (unsigned short *)depth.data, time);
             }
+            // if ((logReader->hasMore() || rewind) && eFusion->getTick() < end)
+            // {
+            //     TICK("LogRead");
+            //     if (rewind)
+            //     {
+            //         if (!logReader->hasMore())
+            //         {
+            //             logReader->getBack();
+            //         }
+            //         else
+            //         {
+            //             logReader->getNext();
+            //         }
+
+            //         if (logReader->rewound())
+            //         {
+            //             logReader->currentFrame = 0;
+            //         }
+            //     }
+            //     else
+            //     {
+            //         logReader->getNext();
+            //     }
+            //     TOCK("LogRead");
+
+            //     if (eFusion->getTick() < start)
+            //     {
+            //         eFusion->setTick(start);
+            //         logReader->fastForward(start);
+            //     }
+
+            //     float weightMultiplier = framesToSkip + 1;
+
+            //     if (framesToSkip > 0)
+            //     {
+            //         eFusion->setTick(eFusion->getTick() + framesToSkip);
+            //         logReader->fastForward(logReader->currentFrame + framesToSkip);
+            //         framesToSkip = 0;
+            //     }
+
+            //     Eigen::Matrix4f *currentPose = 0;
+
+            //     if (groundTruthOdometry)
+            //     {
+            //         currentPose = new Eigen::Matrix4f;
+            //         currentPose->setIdentity();
+            //         *currentPose = groundTruthOdometry->getTransformation(logReader->timestamp);
+            //     }
+
+            //     eFusion->processFrame(logReader->rgb, logReader->depth, logReader->timestamp, currentPose, weightMultiplier);
+
+            //     if (currentPose)
+            //     {
+            //         delete currentPose;
+            //     }
+
+            //     if (frameskip && Stopwatch::getInstance().getTimings().at("Run") > 1000.f / 30.f)
+            //     {
+            //         framesToSkip = int(Stopwatch::getInstance().getTimings().at("Run") / (1000.f / 30.f));
+            //     }
+            // }
         }
         else
         {
@@ -293,7 +330,7 @@ void MainController::run()
 
         TICK("GUI");
 
-        if(gui->followPose->Get())
+        if (gui->followPose->Get())
         {
             pangolin::OpenGlMatrix mv;
 
@@ -318,10 +355,10 @@ void MainController::run()
             Eigen::Vector3f y = z.cross(x);
 
             Eigen::Matrix4d m;
-            m << x(0),  x(1),  x(2),  -(x.dot(eye)),
-                 y(0),  y(1),  y(2),  -(y.dot(eye)),
-                 z(0),  z(1),  z(2),  -(z.dot(eye)),
-                    0,     0,     0,              1;
+            m << x(0), x(1), x(2), -(x.dot(eye)),
+                y(0), y(1), y(2), -(y.dot(eye)),
+                z(0), z(1), z(2), -(z.dot(eye)),
+                0, 0, 0, 1;
 
             memcpy(&mv.m[0], m.data(), sizeof(Eigen::Matrix4d));
 
@@ -338,7 +375,7 @@ void MainController::run()
         stre << (std::isnan(eFusion->getModelToModel().lastICPError) ? 0 : eFusion->getModelToModel().lastICPError);
         gui->trackRes->Ref().Set(stre.str());
 
-        if(!gui->pause->Get())
+        if (!gui->pause->Get())
         {
             gui->resLog.Log((std::isnan(eFusion->getModelToModel().lastICPError) ? std::numeric_limits<float>::max() : eFusion->getModelToModel().lastICPError), icpErrThresh);
             gui->inLog.Log(eFusion->getModelToModel().lastICPCount, icpCountThresh);
@@ -346,27 +383,27 @@ void MainController::run()
 
         Eigen::Matrix4f pose = eFusion->getCurrPose();
 
-        if(gui->drawRawCloud->Get() || gui->drawFilteredCloud->Get())
+        if (gui->drawRawCloud->Get() || gui->drawFilteredCloud->Get())
         {
             eFusion->computeFeedbackBuffers();
         }
 
-        if(gui->drawRawCloud->Get())
+        if (gui->drawRawCloud->Get())
         {
             eFusion->getFeedbackBuffers().at(FeedbackBuffer::RAW)->render(gui->s_cam.GetProjectionModelViewMatrix(), pose, gui->drawNormals->Get(), gui->drawColors->Get());
         }
 
-        if(gui->drawFilteredCloud->Get())
+        if (gui->drawFilteredCloud->Get())
         {
             eFusion->getFeedbackBuffers().at(FeedbackBuffer::FILTERED)->render(gui->s_cam.GetProjectionModelViewMatrix(), pose, gui->drawNormals->Get(), gui->drawColors->Get());
         }
 
-        if(gui->drawGlobalModel->Get())
+        if (gui->drawGlobalModel->Get())
         {
             glFinish();
             TICK("Global");
 
-            if(gui->drawFxaa->Get())
+            if (gui->drawFxaa->Get())
             {
                 gui->drawFXAA(gui->s_cam.GetProjectionModelViewMatrix(),
                               gui->s_cam.GetModelViewMatrix(),
@@ -393,7 +430,7 @@ void MainController::run()
             TOCK("Global");
         }
 
-        if(eFusion->getLost())
+        if (eFusion->getLost())
         {
             glColor3f(1, 1, 0);
         }
@@ -404,12 +441,12 @@ void MainController::run()
         gui->drawFrustum(pose);
         glColor3f(1, 1, 1);
 
-        if(gui->drawFerns->Get())
+        if (gui->drawFerns->Get())
         {
             glColor3f(0, 0, 0);
-            for(size_t i = 0; i < eFusion->getFerns().frames.size(); i++)
+            for (size_t i = 0; i < eFusion->getFerns().frames.size(); i++)
             {
-                if((int)i == eFusion->getFerns().lastClosest)
+                if ((int)i == eFusion->getFerns().lastClosest)
                     continue;
 
                 gui->drawFrustum(eFusion->getFerns().frames.at(i)->pose);
@@ -417,18 +454,18 @@ void MainController::run()
             glColor3f(1, 1, 1);
         }
 
-        if(gui->drawDefGraph->Get())
+        if (gui->drawDefGraph->Get())
         {
-            const std::vector<GraphNode*> & graph = eFusion->getLocalDeformation().getGraph();
+            const std::vector<GraphNode *> &graph = eFusion->getLocalDeformation().getGraph();
 
-            for(size_t i = 0; i < graph.size(); i++)
+            for (size_t i = 0; i < graph.size(); i++)
             {
                 pangolin::glDrawCross(graph.at(i)->position(0),
                                       graph.at(i)->position(1),
                                       graph.at(i)->position(2),
                                       0.1);
 
-                for(size_t j = 0; j < graph.at(i)->neighbours.size(); j++)
+                for (size_t j = 0; j < graph.at(i)->neighbours.size(); j++)
                 {
                     pangolin::glDrawLine(graph.at(i)->position(0),
                                          graph.at(i)->position(1),
@@ -440,29 +477,29 @@ void MainController::run()
             }
         }
 
-        if(eFusion->getFerns().lastClosest != -1)
+        if (eFusion->getFerns().lastClosest != -1)
         {
             glColor3f(1, 0, 0);
             gui->drawFrustum(eFusion->getFerns().frames.at(eFusion->getFerns().lastClosest)->pose);
             glColor3f(1, 1, 1);
         }
 
-        const std::vector<PoseMatch> & poseMatches = eFusion->getPoseMatches();
+        const std::vector<PoseMatch> &poseMatches = eFusion->getPoseMatches();
 
         int maxDiff = 0;
-        for(size_t i = 0; i < poseMatches.size(); i++)
+        for (size_t i = 0; i < poseMatches.size(); i++)
         {
-            if(poseMatches.at(i).secondId - poseMatches.at(i).firstId > maxDiff)
+            if (poseMatches.at(i).secondId - poseMatches.at(i).firstId > maxDiff)
             {
                 maxDiff = poseMatches.at(i).secondId - poseMatches.at(i).firstId;
             }
         }
 
-        for(size_t i = 0; i < poseMatches.size(); i++)
+        for (size_t i = 0; i < poseMatches.size(); i++)
         {
-            if(gui->drawDeforms->Get())
+            if (gui->drawDeforms->Get())
             {
-                if(poseMatches.at(i).fern)
+                if (poseMatches.at(i).fern)
                 {
                     glColor3f(1, 0, 0);
                 }
@@ -470,7 +507,7 @@ void MainController::run()
                 {
                     glColor3f(0, 1, 0);
                 }
-                for(size_t j = 0; j < poseMatches.at(i).constraints.size(); j++)
+                for (size_t j = 0; j < poseMatches.at(i).constraints.size(); j++)
                 {
                     pangolin::glDrawLine(poseMatches.at(i).constraints.at(j).sourcePoint(0), poseMatches.at(i).constraints.at(j).sourcePoint(1), poseMatches.at(i).constraints.at(j).sourcePoint(2),
                                          poseMatches.at(i).constraints.at(j).targetPoint(0), poseMatches.at(i).constraints.at(j).targetPoint(1), poseMatches.at(i).constraints.at(j).targetPoint(2));
@@ -481,9 +518,9 @@ void MainController::run()
 
         eFusion->normaliseDepth(0.3f, gui->depthCutoff->Get());
 
-        for(std::map<std::string, GPUTexture*>::const_iterator it = eFusion->getTextures().begin(); it != eFusion->getTextures().end(); ++it)
+        for (std::map<std::string, GPUTexture *>::const_iterator it = eFusion->getTextures().begin(); it != eFusion->getTextures().end(); ++it)
         {
-            if(it->second->draw)
+            if (it->second->draw)
             {
                 gui->displayImg(it->first, it->second);
             }
@@ -514,10 +551,10 @@ void MainController::run()
 
         gui->totalDefs->operator=(strs4.str());
 
-        std::stringstream strs5;
-        strs5 << eFusion->getTick() << "/" << logReader->getNumFrames();
+        // std::stringstream strs5;
+        // strs5 << eFusion->getTick() << "/" << logReader->getNumFrames();
 
-        gui->logProgress->operator=(strs5.str());
+        // gui->logProgress->operator=(strs5.str());
 
         std::stringstream strs6;
         strs6 << eFusion->getFernDeforms();
@@ -526,7 +563,7 @@ void MainController::run()
 
         gui->postCall();
 
-        logReader->flipColors = gui->flipColors->Get();
+        // logReader->flipColors = gui->flipColors->Get();
         eFusion->setRgbOnly(gui->rgbOnly->Get());
         eFusion->setPyramid(gui->pyramid->Get());
         eFusion->setFastOdom(gui->fastOdom->Get());
@@ -538,25 +575,25 @@ void MainController::run()
 
         resetButton = pangolin::Pushed(*gui->reset);
 
-        if(gui->autoSettings)
-        {
-            static bool last = gui->autoSettings->Get();
+        // if (gui->autoSettings)
+        // {
+        //     static bool last = gui->autoSettings->Get();
 
-            if(gui->autoSettings->Get() != last)
-            {
-                last = gui->autoSettings->Get();
-                static_cast<LiveLogReader *>(logReader)->setAuto(last);
-            }
-        }
+        //     if (gui->autoSettings->Get() != last)
+        //     {
+        //         last = gui->autoSettings->Get();
+        //         static_cast<LiveLogReader *>(logReader)->setAuto(last);
+        //     }
+        // }
 
         Stopwatch::getInstance().sendAll();
 
-        if(resetButton)
+        if (resetButton)
         {
             break;
         }
 
-        if(pangolin::Pushed(*gui->save))
+        if (pangolin::Pushed(*gui->save))
         {
             eFusion->savePly();
         }

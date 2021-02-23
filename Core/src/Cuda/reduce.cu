@@ -77,6 +77,19 @@ int __shfl_down(int val, int offset, int width = 32)
     __syncthreads();
     return val;
 }
+#elif __CUDA_ARCH__ > 700
+__inline__ __device__
+float __shfl_down(float val, int offset, int width = 32)
+{
+    
+    return __shfl_down_sync(0xffffffff, val, offset);
+}
+
+__inline__ __device__
+int __shfl_down(int val, int offset, int width = 32)
+{
+    return  __shfl_down_sync(0xffffffff, val, offset);
+}
 #endif
 
 #if __CUDA_ARCH__ < 350

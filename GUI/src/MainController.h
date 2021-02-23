@@ -23,61 +23,63 @@
 #include "Tools/GroundTruthOdometry.h"
 #include "Tools/RawLogReader.h"
 #include "Tools/LiveLogReader.h"
+#include <xyutils/Camera/InputFactory.h>
 
 #ifndef MAINCONTROLLER_H_
 #define MAINCONTROLLER_H_
 
 class MainController
 {
-    public:
-        MainController(int argc, char * argv[]);
-        virtual ~MainController();
+public:
+    MainController(int argc, char *argv[]);
+    virtual ~MainController();
 
-        void launch();
+    void launch();
 
-    private:
-        void run();
+private:
+    void run();
 
-        void loadCalibration(const std::string & filename);
+    void loadCalibration(const std::string &filename);
 
-        bool good;
-        ElasticFusion * eFusion;
-        GUI * gui;
-        GroundTruthOdometry * groundTruthOdometry;
-        LogReader * logReader;
+    bool good;
+    ElasticFusion *eFusion;
+    GUI *gui;
+    GroundTruthOdometry *groundTruthOdometry;
+    LogReader *logReader;
 
-        bool iclnuim;
-        std::string logFile;
-        std::string poseFile;
+    bool iclnuim;
+    std::string logFile;
+    std::string poseFile;
 
-        float confidence,
-              depth,
-              icp,
-              icpErrThresh,
-              covThresh,
-              photoThresh,
-              fernThresh;
+    float confidence,
+        depth,
+        icp,
+        icpErrThresh,
+        covThresh,
+        photoThresh,
+        fernThresh;
 
-        int timeDelta,
-            icpCountThresh,
-            start,
-            end;
+    int timeDelta,
+        icpCountThresh,
+        start,
+        end;
 
-        bool fillIn,
-             openLoop,
-             reloc,
-             frameskip,
-             quiet,
-             fastOdom,
-             so3,
-             rewind,
-             frameToFrameRGB;
+    bool fillIn,
+        openLoop,
+        reloc,
+        frameskip,
+        quiet,
+        fastOdom,
+        so3,
+        rewind,
+        frameToFrameRGB;
 
-        int framesToSkip;
-        bool streaming;
-        bool resetButton;
+    int framesToSkip;
+    bool streaming;
+    bool resetButton;
 
-        Resize * resizeStream;
+    Resize *resizeStream;
+    InputMethod *camera;
 };
 
 #endif /* MAINCONTROLLER_H_ */
