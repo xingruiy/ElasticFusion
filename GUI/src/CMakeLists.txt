@@ -96,6 +96,7 @@ ${BLAS_LIBRARIES}
 ${LAPACK_LIBRARIES}
 ${OpenCV_LIBS}
 xyutils
+jpeg
 Boost::program_options
 )
 
